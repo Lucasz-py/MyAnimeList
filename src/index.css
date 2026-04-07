@@ -1,1 +1,32 @@
+@import url('https://fonts.googleapis.com/css2?family=Space+Mono:ital,wght@0,400;0,700;1,400;1,700&display=swap');
 @import "tailwindcss";
+
+@theme {
+  --font-space-mono: "Space Mono", monospace;
+}
+
+/* Forzamos el fondo oscuro en toda la aplicación */
+:root {
+  background-color: #030712; /* slate-950 */
+  color: #ecfeff; /* cyan-50 */
+  font-family: var(--font-space-mono);
+}
+
+html, body, #root {
+  background-color: #030712;
+  margin: 0;
+  padding: 0;
+  min-height: 100%;
+}
+
+/* Custom scrollbar estilo Cybercore */
+::-webkit-scrollbar {
+  width: 5px;
+}
+::-webkit-scrollbar-track {
+  background: #0f172a;
+}
+::-webkit-scrollbar-thumb {
+  background: #22d3ee;
+  border-radius: 10px;
+}
