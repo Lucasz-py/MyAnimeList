@@ -1,7 +1,9 @@
-import { useEffect, useState } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { useEffect, useState, useMemo } from 'react';
+import { useSearchParams, Link } from 'react-router-dom';
 import { searchAnime } from '../services/jikanApi';
-import type{ Anime } from '../types/anime';
+import type { Anime } from '../types/anime';
+import { AnimeCard } from '../components/AnimeCard'; 
+import debounce from 'lodash.debounce';
 
 export const Search = () => {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -9,82 +11,127 @@ export const Search = () => {
   
   const [query, setQuery] = useState(queryParam);
   const [results, setResults] = useState<Anime[]>([]);
+  const [instantResults, setInstantResults] = useState<Anime[]>([]);
   const [loading, setLoading] = useState(false);
 
-  useEffect(() => {
-    if (queryParam) {
-      handleFetchAnimes(queryParam);
-    }
-  }, [queryParam]);
+  const debouncedFetchInstantResults = useMemo(
+    () =>
+      debounce(async (searchTerm: string) => {
+        if (searchTerm.trim()) {
+          try {
+            const response = await searchAnime(searchTerm, 5);
+            setInstantResults(response.data);
+          } catch (error) {
+            console.error("Error en búsqueda instantánea:", error);
+          }
+        } else {
+          setInstantResults([]);
+        }
+      }, 300),
+    []
+  );
 
-  const handleFetchAnimes = async (searchTerm: string) => {
+  useEffect(() => {
+    return () => debouncedFetchInstantResults.cancel();
+  }, [debouncedFetchInstantResults]);
+
+  const handleFetchResults = async (searchTerm: string) => {
     if (!searchTerm) return;
     setLoading(true);
     try {
+      setInstantResults([]); 
       const response = await searchAnime(searchTerm);
       setResults(response.data);
     } catch (error) {
-      console.error(error);
+      console.error("Error en la búsqueda principal:", error);
     } finally {
       setLoading(false);
     }
   };
 
+  useEffect(() => {
+    if (queryParam) {
+      setQuery(queryParam);
+      handleFetchResults(queryParam);
+    }
+  }, [queryParam]);
+
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value;
+    setQuery(value);
+    debouncedFetchInstantResults(value);
+  };
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    setInstantResults([]); 
     setSearchParams({ q: query });
   };
 
   return (
-    <div className="container mx-auto p-4 md:p-8">
-      <h2 className="text-3xl font-bold mb-8 text-fuchsia-400 text-neon-fuchsia">BUSCAR_DATA::sujetos</h2>
-      
-      <form onSubmit={handleSubmit} className="mb-12 flex gap-2">
-        <input
-          type="text"
-          value={query}
-          onChange={(e) => setQuery(e.target.value)}
-          placeholder="buscar::ej::naruto, edgerunners..."
-          className="border border-cyan-400 p-3 rounded flex-1 max-w-xl bg-slate-900 text-cyan-50 focus:border-fuchsia-400 focus:outline-none"
-        />
-        <button 
-          type="submit" 
-          className="bg-cyan-600 text-cyan-50 px-6 py-2 rounded font-semibold hover:bg-cyan-800 transition-colors border border-cyan-400"
-        >
-          EJECUTAR_QUERY
-        </button>
-      </form>
+    <div className="container mx-auto p-4 md:p-8 font-sans max-w-[1400px]">
+      <div className="max-w-3xl mx-auto mb-16 mt-8 text-center">
+        <h2 className="text-4xl font-black mb-8 text-white">Encuentra tu próximo anime</h2>
+        
+        <form onSubmit={handleSubmit} className="flex gap-3 relative z-10">
+          <input
+            type="text"
+            value={query}
+            onChange={handleInputChange}
+            placeholder="Ej: Naruto, Cyberpunk, Jujutsu Kaisen..."
+            className="w-full p-4 pl-6 text-white bg-[#1C1C1C] border border-neutral-800 rounded-full focus:border-[#D6685A] focus:outline-none focus:ring-2 focus:ring-[#D6685A]/20 transition-all shadow-sm text-lg"
+          />
+          <button 
+            type="submit" 
+            className="bg-[#D6685A] text-white px-8 py-4 rounded-full font-bold hover:bg-[#c25a4d] transition-all shadow-lg shadow-[#D6685A]/20"
+          >
+            Buscar
+          </button>
 
-      {loading && <p className='text-cyan-400 animate-pulse'>...CARGANDO_DATA_JIKAN...V4...</p>}
-
-      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-6">
-        {results.map((anime) => (
-          <div key={anime.mal_id} className="border border-cyan-900 bg-slate-900 rounded-md overflow-hidden shadow-md hover:border-cyan-400 hover:shadow-cyan-900/50 transition-all hover:-translate-y-1">
-            <div className='relative'>
-                <img 
-                    src={anime.images.jpg.image_url} 
-                    alt={anime.title} 
-                    className="w-full h-72 object-cover border-b border-cyan-900"
-                />
-                <div className='absolute top-2 right-2 bg-slate-950/80 p-1 border border-teal-400 rounded-full text-xs text-teal-400'>
-                    ID:{anime.mal_id}
-                </div>
+          {/* Menú Desplegable (Debajo de la barra central) */}
+          {instantResults.length > 0 && (
+            <div className="absolute top-full left-0 w-full bg-[#1C1C1C] mt-2 border border-neutral-800 rounded-2xl shadow-2xl z-20 overflow-hidden text-left">
+              {instantResults.map((anime) => (
+                <Link 
+                  key={anime.mal_id} 
+                  to={`/anime/${anime.mal_id}`}
+                  className="flex items-center gap-4 p-3 border-b border-neutral-800/50 hover:bg-neutral-900 transition-colors last:border-0"
+                >
+                  <img src={anime.images.jpg.image_url} alt={anime.title} className="w-12 h-16 object-cover rounded-lg" />
+                  <div>
+                    <p className="text-white font-bold">{anime.title}</p>
+                    <p className="text-sm text-neutral-400">{anime.episodes ? `${anime.episodes} episodios` : 'En emisión'}</p>
+                  </div>
+                </Link>
+              ))}
             </div>
-            
-            <div className="p-3">
-              <h3 className="font-semibold text-cyan-50 text-xs line-clamp-2 h-8" title={anime.title}>
-                {anime.title}
-              </h3>
-              <p className="text-[10px] text-slate-500 mt-2 font-mono">
-                {anime.episodes ? `${anime.episodes} eps` : 'Status: AIRING'}
-              </p>
-              <button className="w-full mt-4 bg-fuchsia-950 text-fuchsia-300 text-[11px] py-1 border border-fuchsia-600 rounded-sm hover:bg-fuchsia-800 transition-colors">
-                [+] AGREGAR_A_LISTA
-              </button>
-            </div>
-          </div>
-        ))}
+          )}
+        </form>
       </div>
+
+      {loading && (
+        <div className="text-center py-10">
+          <p className='text-[#D6685A] text-xl font-medium animate-pulse'>Buscando resultados...</p>
+        </div>
+      )}
+
+      {!loading && results.length > 0 && (
+        <>
+          <p className="text-neutral-400 mb-6 font-medium">Resultados para "{queryParam}"</p>
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-6">
+            {results.map((anime) => (
+              <AnimeCard key={anime.mal_id} anime={anime} />
+            ))}
+          </div>
+        </>
+      )}
+
+      {!loading && results.length === 0 && queryParam && (
+        <div className="text-center py-20 bg-[#1C1C1C] rounded-3xl border border-neutral-800">
+          <p className='text-neutral-400 text-lg'>No encontramos resultados para "{queryParam}".</p>
+          <p className='text-neutral-500 mt-2'>Prueba con otros términos de búsqueda.</p>
+        </div>
+      )}
     </div>
   );
 };
