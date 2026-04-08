@@ -3,6 +3,7 @@ import { Header } from './components/Header';
 import { Home } from './pages/Home';
 import { Search } from './pages/Search';
 import { AnimeDetails } from './pages/AnimeDetails'; // <-- Importamos
+import { Profile } from './pages/Profile'
 
 function App() {
   return (
@@ -15,6 +16,7 @@ function App() {
             <Route path="/search" element={<Search />} />
             {/* Añadimos la ruta dinámica con el parámetro :id */}
             <Route path="/anime/:id" element={<AnimeDetails />} /> 
+            <Route path="/profile" element={<Profile />} />
           </Routes>
         </main>
         
