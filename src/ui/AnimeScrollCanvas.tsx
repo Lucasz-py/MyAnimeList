@@ -1,4 +1,4 @@
-import React, { useRef, useState } from 'react';
+import React, { useRef, useState,type ReactNode } from 'react';
 import gsap from 'gsap';
 import { ScrollTrigger } from 'gsap/ScrollTrigger';
 import { useGSAP } from '@gsap/react';
@@ -12,6 +12,7 @@ export interface AnimeScrollCanvasProps {
   fileExtension?: string;
   padLength?: number;
   scrollDistance?: string;
+  children?: ReactNode; 
 }
 
 export const AnimeScrollCanvas: React.FC<AnimeScrollCanvasProps> = ({
@@ -20,7 +21,8 @@ export const AnimeScrollCanvas: React.FC<AnimeScrollCanvasProps> = ({
   framePrefix = 'frame_',
   fileExtension = '.webp',
   padLength = 4,
-  scrollDistance = '400vh', // Aumentado para mayor fluidez
+  scrollDistance = '400vh',
+  children,
 }) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -67,7 +69,6 @@ export const AnimeScrollCanvas: React.FC<AnimeScrollCanvasProps> = ({
     canvas.width = window.innerWidth;
     canvas.height = window.innerHeight;
     
-    // Si ya tenemos imágenes, redibujamos el frame actual
     if (imagesRef.current.length > 0) {
       renderFrame(Math.round(animationRef.current.frame));
     }
@@ -77,16 +78,14 @@ export const AnimeScrollCanvas: React.FC<AnimeScrollCanvasProps> = ({
     const canvas = canvasRef.current;
     if (!canvas) return;
 
-    // 1. SINCRONIZACIÓN INMEDIATA: Creamos el Timeline de GSAP en el milisegundo 0.
-    // Esto EVITA que se rompa el layout (el hueco gris) al recargar la página.
     const absorbTl = gsap.timeline({
       scrollTrigger: {
         trigger: containerRef.current,
         start: 'top top',
         end: `+=${scrollDistance}`,
-        scrub: 1, // Cambiado a 1 para una inercia más sedosa
+        scrub: 1, 
         pin: true,
-        anticipatePin: 1, // Previene el salto al inicio del scroll
+        anticipatePin: 1, 
       }
     });
 
@@ -96,14 +95,12 @@ export const AnimeScrollCanvas: React.FC<AnimeScrollCanvasProps> = ({
       ease: 'none',
       duration: 1,
       onUpdate: () => {
-        // Solo intentamos dibujar si las imágenes ya cargaron en memoria
         if (imagesRef.current.length > 0) {
           renderFrame(Math.round(animationRef.current.frame));
         }
       }
     });
 
-    // 2. CARGA ASÍNCRONA EN SEGUNDO PLANO
     const preloadImages = async () => {
       const loadPromises = Array.from({ length: totalFrames }).map((_, i) => {
         return new Promise<HTMLImageElement | null>((resolve) => {
@@ -111,36 +108,40 @@ export const AnimeScrollCanvas: React.FC<AnimeScrollCanvasProps> = ({
           const url = getImageUrl(i);
           img.src = url;
           img.onload = () => resolve(img);
-          img.onerror = () => {
-            console.error(`❌ ERROR: No se encontró: ${url}`);
-            resolve(null);
-          };
+          img.onerror = () => resolve(null);
         });
       });
 
       imagesRef.current = await Promise.all(loadPromises);
       setIsLoaded(true);
-      handleResize(); // Dibujamos el frame 0 una vez todo está listo
+      handleResize(); 
+
+      requestAnimationFrame(() => {
+        ScrollTrigger.refresh();
+      });
     };
 
     preloadImages();
-
     window.addEventListener('resize', handleResize);
-
-    return () => {
-      window.removeEventListener('resize', handleResize);
-    };
+    return () => window.removeEventListener('resize', handleResize);
   }, { scope: containerRef }); 
 
   return (
-    // CAMBIO IMPORTANTE: Usamos h-screen fijo para evitar bugs de recálculo en móviles
-    <div ref={containerRef} className="relative w-full h-screen bg-[#0a0a0a] overflow-hidden">
-      
+    <div ref={containerRef} className="relative w-full h-[100dvh] bg-[#0a0a0a] overflow-hidden">
+      {/* CAPA 1: EL CANVAS (z-10) */}
       <canvas 
         ref={canvasRef} 
-        className={`w-full h-full block z-10 relative transition-opacity duration-700 ${isLoaded ? 'opacity-100' : 'opacity-0'}`} 
+        className={`absolute inset-0 w-full h-full block z-10 transition-opacity duration-700 ${isLoaded ? 'opacity-100' : 'opacity-0'}`} 
       />
 
+      {/* CAPA 2: CONTENIDO SUPERPUESTO (z-20) */}
+      {children && (
+        <div className="absolute inset-0 z-20 pointer-events-none">
+          <div className="pointer-events-auto w-full h-full">
+            {children}
+          </div>
+        </div>
+      )}
     </div>
   );
 };

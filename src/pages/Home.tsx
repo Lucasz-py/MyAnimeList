@@ -49,6 +49,7 @@ export const Home = () => {
         });
       }
 
+      // Animación de aparición interna del contenido de Estrenos
       const sections = gsap.utils.toArray<HTMLElement>('.reveal-section');
       sections.forEach((section) => {
         const content = section.querySelector('.section-content');
@@ -69,7 +70,27 @@ export const Home = () => {
         }
       });
 
-      // Animación de la onda negra sólida del Top 20
+      // --- NUEVA MAGIA: OLA CURVA PARA ESTRENOS (Transición desde el Canvas) ---
+      gsap.fromTo('.estrenos-section',
+        { 
+          borderTopLeftRadius: '50% 150px', 
+          borderTopRightRadius: '50% 150px',
+          y: 150, 
+        },
+        {
+          borderTopLeftRadius: '0% 0px', 
+          borderTopRightRadius: '0% 0px',
+          y: 0,   
+          scrollTrigger: {
+            trigger: '.estrenos-section',
+            start: 'top 95%', 
+            end: 'top 10%',   
+            scrub: 1,         
+          }
+        }
+      );
+
+      // --- OLA CURVA PARA TOP 20 ---
       gsap.fromTo('.top20-section',
         { 
           borderTopLeftRadius: '50% 150px', 
@@ -113,7 +134,8 @@ export const Home = () => {
   return (
     <div ref={mainRef} className="block font-sans bg-[#1C1C1C] overflow-hidden relative w-full">
       
-      {/* 1. SECUENCIA CANVAS (Actualizada a 400vh) */}
+      {/* 1. SECUENCIA CANVAS CON TEXTO Y BOTÓN FUTURISTA */}
+      {/* El canvas se mantiene en z-10 dentro de su componente */}
       <AnimeScrollCanvas 
         totalFrames={89} 
         baseUrl="/sequence/" 
@@ -121,12 +143,52 @@ export const Home = () => {
         fileExtension=".webp" 
         padLength={4} 
         scrollDistance="400vh" 
-      />
+      >
+        <div className="w-full h-full flex flex-col justify-center items-start pl-6 md:pl-16 lg:pl-[8vw] relative z-10">
+          <div className="max-w-2xl">
+            
+            <div className="flex items-center gap-4 mb-6 opacity-90">
+              <span className="w-10 h-[2px] bg-[#D6685A]"></span>
+              <span className="text-[10px] md:text-xs font-mono text-[#D6685A] uppercase tracking-[0.3em]">
+                System Override // v2.0
+              </span>
+            </div>
+            
+            <h1 className="text-6xl md:text-8xl lg:text-[7.5rem] font-black text-white tracking-tighter leading-[0.85] mb-10">
+              WELCOME TO <br/>
+              <span className="text-transparent bg-clip-text bg-gradient-to-r from-white via-neutral-300 to-neutral-500">
+                HARMONIA
+              </span>
+            </h1>
+            
+            <Link 
+              to="/search" 
+              className="group relative inline-flex items-center gap-6 px-1.5 py-1.5 pr-8 bg-white/5 border border-white/10 backdrop-blur-lg rounded-full overflow-hidden transition-all duration-500 hover:bg-white/10 hover:border-white/20 hover:shadow-[0_0_40px_rgba(214,104,90,0.15)]"
+            >
+              <div className="flex items-center justify-center w-12 h-12 md:w-14 h-14 rounded-full bg-gradient-to-br from-[#D6685A] to-[#b04d41] transition-transform duration-500 group-hover:scale-105 shadow-inner">
+                <svg 
+                  className="w-5 h-5 text-white transform transition-transform duration-500 group-hover:translate-x-1" 
+                  fill="none" 
+                  viewBox="0 0 24 24" 
+                  stroke="currentColor"
+                >
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M14 5l7 7m0 0l-7 7m7-7H3" />
+                </svg>
+              </div>
+              <span className="text-white font-bold tracking-[0.2em] text-xs md:text-sm uppercase transition-colors duration-300 group-hover:text-[#D6685A]">
+                Iniciar Búsqueda
+              </span>
+            </Link>
+
+          </div>
+        </div>
+      </AnimeScrollCanvas>
 
       {/* 2. SECCIÓN: ESTRENOS DE TEMPORADA */}
-      <section className="reveal-section pt-24 pb-48 relative z-10 bg-[#1C1C1C] border-t border-neutral-800">
+      {/* CAMBIOS CLAVE: Añadida la clase 'estrenos-section', z-20 para tapar el canvas, y -mt-[150px] para superposición física. Se eliminó el border-t. */}
+      <section className="estrenos-section reveal-section pt-32 pb-48 relative z-20 bg-[#1C1C1C] -mt-[150px]">
         <div className="section-content">
-          <div className="container mx-auto px-4 mb-10 mt-10">
+          <div className="container mx-auto px-4 mb-10">
             <h2 className="text-3xl font-black text-white flex items-center gap-4">
               Estrenos de Temporada
               <span className="bg-[#D6685A] text-white text-xs px-4 py-1.5 rounded-full font-bold shadow-[0_0_15px_rgba(214,104,90,0.5)]">Abril 2026</span>
@@ -151,7 +213,8 @@ export const Home = () => {
       </section>
 
       {/* 3. SECCIÓN: TOP 20 GLOBAL (LA OLA SÓLIDA NEGRA) */}
-      <section className="top20-section pt-32 pb-20 px-4 relative z-20 bg-[#0a0a0a] -mt-32">
+      {/* z-30 asegura que esta ola cubra la sección de Estrenos */}
+      <section className="top20-section pt-32 pb-20 px-4 relative z-30 bg-[#0a0a0a] -mt-[120px]">
         <div className="container mx-auto max-w-[1350px]">
           
           <div className="top20-content-header flex items-center justify-between mb-16 border-b border-neutral-800 pb-6">
@@ -181,7 +244,6 @@ export const Home = () => {
   );
 };
 
-// Subcomponente RankingItem...
 const RankingItem = ({ anime, index }: { anime: Anime, index: number }) => (
   <Link
     to={`/anime/${anime.mal_id}`}
