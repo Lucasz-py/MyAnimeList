@@ -27,8 +27,16 @@ export const getAnimeCharacters = async (id: string): Promise<AnimeCharactersRes
   return response.json();
 };
 
-export const getTopAnimes = async (limit: number = 20): Promise<JikanResponse> => {
-  const response = await fetch(`${BASE_URL}/top/anime?limit=${limit}`);
+// --- FUNCIÓN ACTUALIZADA CON SOPORTE PARA FILTROS ---
+// --- FUNCIÓN ACTUALIZADA CON SOPORTE PARA FILTROS Y PAGINACIÓN ---
+export const getTopAnimes = async (limit: number = 25, filter: string = "", page: number = 1): Promise<JikanResponse> => {
+  // Jikan usa query params: ?limit=25&page=1&filter=bypopularity
+  let url = `${BASE_URL}/top/anime?limit=${limit}&page=${page}`;
+  if (filter) {
+    url += `&filter=${filter}`;
+  }
+  
+  const response = await fetch(url);
   if (!response.ok) throw new Error('Error al obtener el top global');
   return response.json();
 };

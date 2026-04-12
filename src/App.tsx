@@ -4,6 +4,7 @@ import { Home } from './pages/Home';
 import { Search } from './pages/Search';
 import { AnimeDetails } from './pages/AnimeDetails'; 
 import { Profile } from './pages/Profile';
+import { RankingPage } from './pages/RankingPage';
 
 function App() {
   return (
@@ -19,6 +20,7 @@ function App() {
             <Route path="/search" element={<Search />} />
             <Route path="/anime/:id" element={<AnimeDetails />} /> 
             <Route path="/profile" element={<Profile />} />
+            <Route path="/top/:filter" element={<RankingPage />} />
           </Routes>
         </main>
         

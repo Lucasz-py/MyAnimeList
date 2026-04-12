@@ -1,9 +1,18 @@
+// --- NUEVA INTERFAZ DE GÉNERO ---
+export interface Genre {
+  mal_id: number;
+  name: string;
+  type?: string;
+  url?: string;
+}
+
 // 1. Estructura base de un Anime
 export interface Anime {
   mal_id: number;
   title: string;
   episodes: number | null;
   score?: number | null;
+  duration?: string; // <--- AGREGADO PARA CÁLCULO DE TIEMPO
   images: {
     jpg: {
       image_url: string;
@@ -13,6 +22,7 @@ export interface Anime {
   aired?: {
     from: string;
   };
+  genres?: Genre[]; 
 }
 
 // 2. Respuesta de búsqueda general
@@ -46,12 +56,12 @@ export interface AnimeFull extends Anime {
   year: number | null;
   status: string;
   studios: { name: string }[];
-  genres: { name: string }[];
+  genres: Genre[]; 
   score: number | null;
   trailer?: {
     youtube_id: string | null;
     url: string | null;
-    embed_url: string | null; // <-- Agregamos el enlace directo para iframes
+    embed_url: string | null; 
   };
   relations?: AnimeRelation[];
 }
@@ -63,11 +73,11 @@ export interface JikanFullResponse {
 
 export interface AnimeRelationEntry {
   mal_id: number;
-  type: string; // Puede ser "anime" o "manga"
+  type: string; 
   name: string;
 }
 
 export interface AnimeRelation {
-  relation: string; // Ej: "Sequel", "Prequel", "Alternative version"
+  relation: string; 
   entry: AnimeRelationEntry[];
 }

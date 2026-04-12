@@ -91,12 +91,14 @@ export const AnimeDetails = () => {
         .maybeSingle();
 
       if (existing) {
+        // Si ya existe, solo actualizamos el estado
         const { error } = await supabase
           .from('saved_animes')
           .update({ status: newStatus })
           .eq('id', existing.id);
         if (error) throw error;
       } else {
+        // --- AQUÍ GUARDAMOS LOS DATOS ANALÍTICOS NUEVOS ---
         const { error } = await supabase
           .from('saved_animes')
           .insert({
@@ -107,7 +109,10 @@ export const AnimeDetails = () => {
             status: newStatus,
             episodes_total: anime.episodes,
             score: anime.score,
-            is_favorite: isFavorite
+            is_favorite: isFavorite,
+            year: anime.year || (anime.aired?.from ? parseInt(anime.aired.from.substring(0, 4)) : null),
+            genres: anime.genres?.map(g => g.name) || [],
+            duration: anime.duration || null 
           });
         if (error) throw error;
       }
