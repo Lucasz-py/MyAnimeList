@@ -6,6 +6,23 @@ import { supabase } from '../lib/supabase';
 import { ChevronDown, Check, Trash2, Loader2, Heart, Image as ImageIcon } from 'lucide-react';
 import type { Session } from '@supabase/supabase-js';
 
+const getRankingBadgeStyle = (rank: number) => {
+  switch (rank) {
+    case 1:
+      return "bg-gradient-to-r from-pink-500 via-red-500 to-yellow-500 text-white font-black shadow-[0_0_20px_rgba(236,72,153,0.6)] border-0"; 
+    case 2:
+      return "bg-gradient-to-r from-slate-300 to-slate-500 text-slate-900 font-black shadow-[0_0_15px_rgba(203,213,225,0.6)] border-0"; 
+    case 3:
+      return "bg-gradient-to-r from-amber-600 to-amber-800 text-white font-black shadow-[0_0_15px_rgba(217,119,6,0.6)] border-0"; 
+    case 4:
+      return "bg-blue-500/20 text-blue-300 border-blue-500/50 font-bold shadow-[0_0_10px_rgba(59,130,246,0.2)]"; 
+    case 5:
+      return "bg-emerald-500/20 text-emerald-300 border-emerald-500/50 font-bold shadow-[0_0_10px_rgba(16,185,129,0.2)]"; 
+    default:
+      return "bg-neutral-800 border-neutral-700 text-neutral-400 font-medium"; 
+  }
+};
+
 export const AnimeDetails = () => {
   const { id } = useParams<{ id: string }>();
   const [anime, setAnime] = useState<AnimeFull | null>(null);
@@ -19,11 +36,29 @@ export const AnimeDetails = () => {
   const [isSaving, setIsSaving] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
-  const STATUS_OPTIONS = ['Completado', 'Mirando', 'Pendiente'];
+  // --- NUEVA LÓGICA: Opciones dinámicas según el estado de emisión ---
+  const getAvailableStatuses = () => {
+    if (!anime) return [];
+    if (anime.status === 'Currently Airing') {
+      return ['Mirando', 'Pendiente'];
+    }
+    if (anime.status === 'Not yet aired') {
+      return ['Pendiente'];
+    }
+    // Finished Airing o cualquier otro caso
+    return ['Completado', 'Mirando', 'Pendiente'];
+  };
+
+  const availableStatuses = getAvailableStatuses();
 
   useEffect(() => {
     const fetchData = async () => {
       if (!id) return;
+      
+      setSavedStatus(null);
+      setIsFavorite(false);
+      setIsDropdownOpen(false);
+      
       setLoading(true);
       window.scrollTo({ top: 0, behavior: 'smooth' });
       
@@ -51,6 +86,9 @@ export const AnimeDetails = () => {
           if (savedData) {
             setSavedStatus(savedData.status);
             setIsFavorite(savedData.is_favorite);
+          } else {
+            setSavedStatus(null);
+            setIsFavorite(false);
           }
         }
       } catch (error: unknown) {
@@ -79,6 +117,12 @@ export const AnimeDetails = () => {
       return;
     }
 
+    // Validación de seguridad extra por si acaso
+    if (!availableStatuses.includes(newStatus)) {
+      alert(`No puedes marcar este anime como ${newStatus} porque su estado actual es: ${anime.status}`);
+      return;
+    }
+
     setIsSaving(true);
     setIsDropdownOpen(false);
 
@@ -91,14 +135,12 @@ export const AnimeDetails = () => {
         .maybeSingle();
 
       if (existing) {
-        // Si ya existe, solo actualizamos el estado
         const { error } = await supabase
           .from('saved_animes')
           .update({ status: newStatus })
           .eq('id', existing.id);
         if (error) throw error;
       } else {
-        // --- AQUÍ GUARDAMOS LOS DATOS ANALÍTICOS NUEVOS ---
         const { error } = await supabase
           .from('saved_animes')
           .insert({
@@ -180,7 +222,7 @@ export const AnimeDetails = () => {
   const filteredRelations = anime.relations?.filter((rel) => rel.relation.toLowerCase() !== 'adaptation') || [];
 
   return (
-    <div className="container mx-auto p-4 md:p-8 max-w-[1350px] font-sans">
+    <div className="container mx-auto p-4 md:p-8 pt-32 md:pt-36 max-w-[1350px] font-sans">
       <Link to="/search" className="text-neutral-400 hover:text-[#D6685A] mb-8 inline-flex items-center gap-2 text-sm font-medium transition-colors">
         <span>&larr;</span> Volver al buscador
       </Link>
@@ -196,13 +238,28 @@ export const AnimeDetails = () => {
             <div className="flex flex-col lg:flex-row justify-between items-start mb-8 gap-6">
               <div className="flex-1">
                 <h1 className="text-4xl md:text-5xl font-bold text-white mb-4 leading-tight">{anime.title}</h1>
-                <div className="flex flex-wrap gap-2">
+                
+                <div className="flex flex-wrap gap-2 mb-5">
                   {anime.genres.map(g => (
                     <span key={g.name} className="bg-[#D6685A]/10 text-[#D6685A] border border-[#D6685A]/20 text-sm px-4 py-1.5 rounded-full font-medium">
                       {g.name}
                     </span>
                   ))}
                 </div>
+
+                <div className="flex flex-wrap gap-3">
+                  {anime.rank && (
+                    <div className={`px-4 py-1.5 rounded-full text-sm flex items-center gap-2 border ${getRankingBadgeStyle(anime.rank)}`}>
+                      🏆 Rank #{anime.rank}
+                    </div>
+                  )}
+                  {anime.popularity && (
+                    <div className="px-4 py-1.5 rounded-full text-sm font-medium flex items-center gap-2 bg-neutral-800/80 border border-neutral-700 text-neutral-300 shadow-inner">
+                      🔥 Popularidad #{anime.popularity}
+                    </div>
+                  )}
+                </div>
+
               </div>
               
               <div className="flex flex-col items-start lg:items-end gap-4 min-w-max">
@@ -249,7 +306,8 @@ export const AnimeDetails = () => {
 
                     {isDropdownOpen && (
                       <div className="absolute top-full mt-2 right-0 w-full lg:w-48 bg-neutral-800 border border-neutral-700 rounded-xl shadow-2xl overflow-hidden z-50 animate-in fade-in slide-in-from-top-2">
-                        {STATUS_OPTIONS.map(status => (
+                        {/* AHORA MAPEAMOS availableStatuses EN LUGAR DE STATUS_OPTIONS */}
+                        {availableStatuses.map(status => (
                           <button
                             key={status}
                             onClick={() => handleSaveAnime(status)}
@@ -364,8 +422,6 @@ export const AnimeDetails = () => {
   );
 };
 
-
-// --- SUB-COMPONENTE PARA BUSCAR IMÁGENES DE CONTENIDO RELACIONADO ---
 const RelatedEntryItem = ({ entry }: { entry: { mal_id: number, type: string, name: string } }) => {
   const [imageUrl, setImageUrl] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(entry.type === 'anime' || entry.type === 'manga');

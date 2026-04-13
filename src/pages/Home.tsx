@@ -16,14 +16,24 @@ export const Home = () => {
   const [topPopular, setTopPopular] = useState<Anime[]>([]);
   
   const mainRef = useRef<HTMLDivElement>(null);
-  const marqueeRef = useRef<HTMLDivElement>(null);
+  const carouselRef = useRef<HTMLDivElement>(null);
+
+  // --- REFERENCIAS DE ALTO RENDIMIENTO PARA EL ARRASTRE Y SCROLL ---
+  // Usamos useRef para no provocar re-renders que causen lag al mover el mouse
+  const isDragging = useRef(false);
+  const isHovered = useRef(false);
+  const startX = useRef(0);
+  const scrollLeftPos = useRef(0);
+  
+  // Estado solo para actualizar el cursor visualmente (la manito cerrada)
+  const [isDraggingUI, setIsDraggingUI] = useState(false);
 
   useEffect(() => {
     const fetchHomeData = async () => {
       try {
         const [upcomingRes, topRatedRes, topPopularRes] = await Promise.all([
           getUpcomingAnimes(),
-          getTopAnimes(10), // Limitado a 10 para una Home más ligera
+          getTopAnimes(10),
           getTopAnimes(10, 'bypopularity')
         ]);
 
@@ -40,20 +50,33 @@ export const Home = () => {
     fetchHomeData();
   }, []);
 
+  // --- LÓGICA DEL AUTO-SCROLL INFINITO SÚPER SUAVE ---
+  useEffect(() => {
+    let animationId: number;
+    
+    const scrollStep = () => {
+      // Solo se mueve si existe el carrusel, NO estamos arrastrando y NO tenemos el mouse encima
+      if (carouselRef.current && !isDragging.current && !isHovered.current) {
+         carouselRef.current.scrollLeft += 1; // Aumenta/disminuye este número para la velocidad
+         
+         // Efecto de bucle infinito real
+         if (carouselRef.current.scrollLeft >= carouselRef.current.scrollWidth / 2) {
+           carouselRef.current.scrollLeft = 0;
+         }
+      }
+      // Pide al navegador el siguiente cuadro de animación
+      animationId = requestAnimationFrame(scrollStep);
+    };
+
+    if (upcoming.length > 0) {
+      animationId = requestAnimationFrame(scrollStep);
+    }
+
+    return () => cancelAnimationFrame(animationId);
+  }, [upcoming]);
+
   useGSAP(() => {
     const ctx = gsap.context(() => {
-      // 1. Marquesina infinita de estrenos
-      if (marqueeRef.current && upcoming.length > 0) {
-        const totalWidth = marqueeRef.current.scrollWidth / 2;
-        gsap.to(marqueeRef.current, {
-          x: -totalWidth,
-          duration: 70, 
-          ease: "none",
-          repeat: -1,
-        });
-      }
-
-      // 2. Animación de revelado para el contenido interno
       const sections = gsap.utils.toArray<HTMLElement>('.reveal-section');
       sections.forEach((section) => {
         const content = section.querySelector('.section-content');
@@ -74,25 +97,11 @@ export const Home = () => {
         }
       });
 
-      // 3. COREOGRAFÍA DE OLAS CURVAS (Transiciones entre secciones)
-      // Aplicamos el efecto a las 3 secciones principales para que se "devoren" entre sí
       ['.estrenos-section', '.top-rated-section', '.top-popular-section'].forEach((selector) => {
         gsap.fromTo(selector,
-          { 
-            borderTopLeftRadius: '50% 150px', 
-            borderTopRightRadius: '50% 150px',
-            y: 150, 
-          },
-          {
-            borderTopLeftRadius: '0% 0px', 
-            borderTopRightRadius: '0% 0px',
-            y: 0,   
-            scrollTrigger: {
-              trigger: selector,
-              start: 'top 95%', 
-              end: 'top 10%',   
-              scrub: 1,         
-            }
+          { borderTopLeftRadius: '50% 150px', borderTopRightRadius: '50% 150px', y: 150 },
+          { borderTopLeftRadius: '0% 0px', borderTopRightRadius: '0% 0px', y: 0,   
+            scrollTrigger: { trigger: selector, start: 'top 95%', end: 'top 10%', scrub: 1 }
           }
         );
       });
@@ -102,10 +111,41 @@ export const Home = () => {
     return () => ctx.revert();
   }, [upcoming, topRated, topPopular]);
 
+  // --- CONTROLADORES DEL MOUSE ---
+  const handleMouseDown = (e: React.MouseEvent) => {
+    if (!carouselRef.current) return;
+    isDragging.current = true;
+    setIsDraggingUI(true);
+    startX.current = e.pageX - carouselRef.current.offsetLeft;
+    scrollLeftPos.current = carouselRef.current.scrollLeft;
+  };
+
+  const handleMouseLeave = () => {
+    isDragging.current = false;
+    setIsDraggingUI(false);
+    isHovered.current = false; // Reanuda el movimiento si se sale
+  };
+
+  const handleMouseEnter = () => {
+    isHovered.current = true; // Pausa el movimiento al poner el mouse
+  };
+
+  const handleMouseUp = () => {
+    isDragging.current = false;
+    setIsDraggingUI(false);
+  };
+
+  const handleMouseMove = (e: React.MouseEvent) => {
+    if (!isDragging.current || !carouselRef.current) return;
+    e.preventDefault(); 
+    const x = e.pageX - carouselRef.current.offsetLeft;
+    const walk = (x - startX.current) * 2; // El *2 hace que el arrastre se sienta más natural y responsivo
+    carouselRef.current.scrollLeft = scrollLeftPos.current - walk;
+  };
+
   return (
     <div ref={mainRef} className="block font-sans bg-[#1C1C1C] overflow-hidden relative w-full">
       
-      {/* 1. HERO: CANVAS + TÍTULO DESPLAZADO */}
       <AnimeScrollCanvas 
         totalFrames={89} 
         baseUrl="/sequence/" 
@@ -147,7 +187,6 @@ export const Home = () => {
         </div>
       </AnimeScrollCanvas>
 
-      {/* 2. SECCIÓN: ESTRENOS DE TEMPORADA */}
       <section className="estrenos-section reveal-section pt-32 pb-48 relative z-20 bg-[#1C1C1C] -mt-[150px]">
         <div className="section-content">
           <div className="container mx-auto px-4 mb-10">
@@ -158,10 +197,22 @@ export const Home = () => {
           </div>
 
           {upcoming.length > 0 && (
-            <div className="relative flex overflow-hidden">
-              <div ref={marqueeRef} className="flex gap-6 whitespace-nowrap pl-6">
+            <div className="relative w-full">
+              <div 
+                ref={carouselRef}
+                onMouseDown={handleMouseDown}
+                onMouseLeave={handleMouseLeave}
+                onMouseEnter={handleMouseEnter}
+                onMouseUp={handleMouseUp}
+                onMouseMove={handleMouseMove}
+                className={`flex gap-6 overflow-x-auto px-6 pb-8 pt-4 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden transition-all ${isDraggingUI ? 'cursor-grabbing' : 'cursor-grab'}`}
+              >
+                {/* Duplicamos los animes para permitir el giro infinito visual */}
                 {[...upcoming, ...upcoming].map((anime, index) => (
-                  <div key={`${anime.mal_id}-${index}`} className="inline-block w-64 whitespace-normal shrink-0">
+                  <div 
+                    key={`${anime.mal_id}-${index}`} 
+                    className={`inline-block w-64 shrink-0 transition-transform duration-300 ${isDraggingUI ? 'pointer-events-none scale-[0.98] opacity-80' : ''}`}
+                  >
                     <AnimeCard anime={anime} />
                   </div>
                 ))}
@@ -171,7 +222,6 @@ export const Home = () => {
         </div>
       </section>
 
-      {/* 3. SECCIÓN: TOP 10 SERIES (Mejor Valoradas) */}
       <section className="top-rated-section pt-32 pb-32 px-4 relative z-30 bg-[#0a0a0a] -mt-[120px]">
         <div className="container mx-auto max-w-[900px]">
           <h2 className="text-4xl font-black text-white mb-16 border-b border-neutral-800 pb-6">
@@ -195,7 +245,6 @@ export const Home = () => {
         </div>
       </section>
 
-      {/* 4. SECCIÓN: MÁS POPULARES */}
       <section className="top-popular-section pt-32 pb-32 px-4 relative z-40 bg-[#141414] -mt-[120px]">
         <div className="container mx-auto max-w-[900px]">
           <h2 className="text-4xl font-black text-white mb-16 border-b border-neutral-800 pb-6">
@@ -223,18 +272,15 @@ export const Home = () => {
   );
 };
 
-// COMPONENTE DE FILA (RankingRow) - Única Columna y Portadas Grandes
 export const RankingRow = ({ anime, index }: { anime: Anime, index: number }) => (
   <Link
     to={`/anime/${anime.mal_id}`}
     className="group flex bg-neutral-900/40 border border-white/5 rounded-3xl overflow-hidden hover:border-[#D6685A]/40 hover:shadow-[0_0_40px_rgba(214,104,90,0.1)] transition-all duration-500 h-auto"
   >
-    {/* Número de Ranking */}
     <div className="w-16 md:w-24 flex items-center justify-center bg-black/20 text-neutral-700 font-black text-2xl md:text-4xl group-hover:text-[#D6685A] transition-colors border-r border-white/5">
       {index + 1}
     </div>
     
-    {/* Portada Grande */}
     <div className="w-32 md:w-44 h-48 md:h-60 overflow-hidden shrink-0">
       <img 
         src={anime.images.jpg.image_url} 
@@ -243,13 +289,11 @@ export const RankingRow = ({ anime, index }: { anime: Anime, index: number }) =>
       />
     </div>
     
-    {/* Info del Anime */}
     <div className="p-6 md:p-8 flex flex-col justify-center flex-1 min-w-0">
       <h3 className="text-white text-xl md:text-2xl font-bold truncate mb-3 group-hover:text-[#D6685A] transition-colors">
         {anime.title}
       </h3>
 
-      {/* Géneros */}
       <div className="flex flex-wrap gap-2 mb-5">
         {anime.genres?.slice(0, 3).map(genre => (
           <span 
@@ -266,7 +310,6 @@ export const RankingRow = ({ anime, index }: { anime: Anime, index: number }) =>
           {anime.episodes ? `${anime.episodes} Episodios` : 'En Emisión'}
         </span>
         
-        {/* Rating Badge */}
         <div className="flex items-center gap-2 bg-black/40 px-3 py-1.5 rounded-xl border border-white/5 shadow-inner">
           <span className="text-[#D6685A] text-sm">★</span>
           <span className="text-white font-black text-sm">{anime.score}</span>

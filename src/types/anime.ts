@@ -13,6 +13,8 @@ export interface Anime {
   episodes: number | null;
   score?: number | null;
   duration?: string; // <--- AGREGADO PARA CÁLCULO DE TIEMPO
+  rank?: number | null;       // <--- NUEVO: Ranking Global
+  popularity?: number | null;
   images: {
     jpg: {
       image_url: string;

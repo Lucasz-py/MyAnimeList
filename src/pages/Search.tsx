@@ -16,13 +16,12 @@ export const Search = () => {
   const [instantResults, setInstantResults] = useState<Anime[]>([]);
   const [loading, setLoading] = useState(false);
 
-  // Estados de Descubrimiento (NUEVO)
+  // Estados de Descubrimiento
   const [recommendations, setRecommendations] = useState<Anime[]>([]);
   const [loadingRecs, setLoadingRecs] = useState(true);
   const [randomAnime, setRandomAnime] = useState<Anime | null>(null);
   const [loadingRandom, setLoadingRandom] = useState(false);
 
-  // 1. Cargar Recomendaciones Iniciales
   useEffect(() => {
     handleLoadRecommendations();
   }, []);
@@ -41,7 +40,7 @@ export const Search = () => {
 
   const handlePickRandomAnime = async () => {
     setLoadingRandom(true);
-    setRandomAnime(null); // Oculta el actual mientras carga
+    setRandomAnime(null); 
     try {
       const response = await getRandomAnime();
       setRandomAnime(response.data);
@@ -52,7 +51,6 @@ export const Search = () => {
     }
   };
 
-  // 2. Lógica de Búsqueda Instantánea
   const debouncedFetchInstantResults = useMemo(
     () =>
       debounce(async (searchTerm: string) => {
@@ -93,7 +91,7 @@ export const Search = () => {
       setQuery(queryParam);
       handleFetchResults(queryParam);
     } else {
-      setResults([]); // Limpiar resultados si se borra la búsqueda
+      setResults([]); 
     }
   }, [queryParam]);
 
@@ -109,14 +107,15 @@ export const Search = () => {
     if (query.trim()) {
       setSearchParams({ q: query });
     } else {
-      setSearchParams({}); // Quita el parámetro de la URL si está vacío
+      setSearchParams({}); 
     }
   };
 
   const isDiscoverMode = !queryParam && results.length === 0 && !loading;
 
   return (
-    <div className="container mx-auto p-4 md:p-8 font-sans max-w-[1400px]">
+    // LA SOLUCIÓN: pt-32 md:pt-36 empuja todo el contenido hacia abajo de forma limpia
+    <div className="container mx-auto p-4 md:p-8 pt-32 md:pt-36 font-sans max-w-[1400px]">
       
       {/* BARRA DE BÚSQUEDA CENTRAL */}
       <div className={`max-w-3xl mx-auto transition-all duration-500 ${isDiscoverMode ? 'mt-8 mb-16' : 'mt-0 mb-10'}`}>
@@ -193,11 +192,10 @@ export const Search = () => {
         </div>
       )}
 
-      {/* --- MODO DESCUBRIMIENTO (Se muestra solo si no hay búsqueda activa) --- */}
+      {/* --- MODO DESCUBRIMIENTO --- */}
       {isDiscoverMode && (
         <div className="flex flex-col gap-12 animate-in fade-in duration-700">
           
-          {/* SECCIÓN 1: Ruleta de Anime al Azar */}
           <section className="bg-gradient-to-br from-[#1C1C1C] to-neutral-900 rounded-3xl p-8 border border-neutral-800 shadow-xl relative overflow-hidden">
             <div className="flex flex-col md:flex-row items-center justify-between gap-8 relative z-10">
               <div className="flex-1 text-center md:text-left">
@@ -215,7 +213,6 @@ export const Search = () => {
                 </button>
               </div>
 
-              {/* Contenedor del Anime Generado */}
               <div className="w-full md:w-64 min-h-[350px] flex items-center justify-center bg-neutral-900/50 rounded-2xl border border-neutral-800 border-dashed">
                 {randomAnime ? (
                   <div className="w-full h-full animate-in zoom-in duration-500">
@@ -231,7 +228,6 @@ export const Search = () => {
             </div>
           </section>
 
-          {/* SECCIÓN 2: Recomendaciones Dinámicas */}
           <section>
             <div className="flex flex-col sm:flex-row justify-between items-center mb-8 gap-4 border-b border-neutral-800 pb-4">
               <h3 className="text-2xl font-bold text-white flex items-center gap-3">
