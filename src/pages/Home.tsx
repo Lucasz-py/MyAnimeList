@@ -18,14 +18,12 @@ export const Home = () => {
   const mainRef = useRef<HTMLDivElement>(null);
   const carouselRef = useRef<HTMLDivElement>(null);
 
-  // --- REFERENCIAS DE ALTO RENDIMIENTO PARA EL ARRASTRE Y SCROLL ---
-  // Usamos useRef para no provocar re-renders que causen lag al mover el mouse
   const isDragging = useRef(false);
   const isHovered = useRef(false);
   const startX = useRef(0);
   const scrollLeftPos = useRef(0);
   
-  // Estado solo para actualizar el cursor visualmente (la manito cerrada)
+  // Estado para bloquear clics solo cuando realmente se arrastra
   const [isDraggingUI, setIsDraggingUI] = useState(false);
 
   useEffect(() => {
@@ -37,10 +35,7 @@ export const Home = () => {
           getTopAnimes(10, 'bypopularity')
         ]);
 
-        const currentMonth = upcomingRes.data.filter(anime => 
-          anime.aired?.from?.startsWith('2026-04')
-        );
-        setUpcoming(currentMonth);
+        setUpcoming(upcomingRes.data);
         setTopRated(topRatedRes.data);
         setTopPopular(topPopularRes.data);
       } catch (error) {
@@ -50,21 +45,17 @@ export const Home = () => {
     fetchHomeData();
   }, []);
 
-  // --- LÓGICA DEL AUTO-SCROLL INFINITO SÚPER SUAVE ---
   useEffect(() => {
     let animationId: number;
     
     const scrollStep = () => {
-      // Solo se mueve si existe el carrusel, NO estamos arrastrando y NO tenemos el mouse encima
       if (carouselRef.current && !isDragging.current && !isHovered.current) {
-         carouselRef.current.scrollLeft += 1; // Aumenta/disminuye este número para la velocidad
+         carouselRef.current.scrollLeft += 1; 
          
-         // Efecto de bucle infinito real
          if (carouselRef.current.scrollLeft >= carouselRef.current.scrollWidth / 2) {
            carouselRef.current.scrollLeft = 0;
          }
       }
-      // Pide al navegador el siguiente cuadro de animación
       animationId = requestAnimationFrame(scrollStep);
     };
 
@@ -97,7 +88,7 @@ export const Home = () => {
         }
       });
 
-      ['.estrenos-section', '.top-rated-section', '.top-popular-section'].forEach((selector) => {
+      ['.estrenos-section', '.rankings-section'].forEach((selector) => {
         gsap.fromTo(selector,
           { borderTopLeftRadius: '50% 150px', borderTopRightRadius: '50% 150px', y: 150 },
           { borderTopLeftRadius: '0% 0px', borderTopRightRadius: '0% 0px', y: 0,   
@@ -111,36 +102,43 @@ export const Home = () => {
     return () => ctx.revert();
   }, [upcoming, topRated, topPopular]);
 
-  // --- CONTROLADORES DEL MOUSE ---
+  // --- CONTROLADORES DEL MOUSE CORREGIDOS ---
   const handleMouseDown = (e: React.MouseEvent) => {
     if (!carouselRef.current) return;
+    // Solo iniciamos el rastreo, pero NO marcamos como "arrastrando" todavía
     isDragging.current = true;
-    setIsDraggingUI(true);
     startX.current = e.pageX - carouselRef.current.offsetLeft;
     scrollLeftPos.current = carouselRef.current.scrollLeft;
+  };
+
+  const handleMouseMove = (e: React.MouseEvent) => {
+    if (!isDragging.current || !carouselRef.current) return;
+    
+    const x = e.pageX - carouselRef.current.offsetLeft;
+    const walk = (x - startX.current);
+
+    // SOLUCIÓN: Solo activamos el bloqueo visual y de clics si se mueve más de 5px
+    if (Math.abs(walk) > 5) {
+      if (!isDraggingUI) setIsDraggingUI(true);
+      e.preventDefault(); 
+      carouselRef.current.scrollLeft = scrollLeftPos.current - (walk * 2);
+    }
+  };
+
+  const handleMouseUp = () => {
+    isDragging.current = false;
+    // Agregamos un pequeño delay para permitir que el evento de clic se complete
+    setTimeout(() => setIsDraggingUI(false), 50);
   };
 
   const handleMouseLeave = () => {
     isDragging.current = false;
     setIsDraggingUI(false);
-    isHovered.current = false; // Reanuda el movimiento si se sale
+    isHovered.current = false; 
   };
 
   const handleMouseEnter = () => {
-    isHovered.current = true; // Pausa el movimiento al poner el mouse
-  };
-
-  const handleMouseUp = () => {
-    isDragging.current = false;
-    setIsDraggingUI(false);
-  };
-
-  const handleMouseMove = (e: React.MouseEvent) => {
-    if (!isDragging.current || !carouselRef.current) return;
-    e.preventDefault(); 
-    const x = e.pageX - carouselRef.current.offsetLeft;
-    const walk = (x - startX.current) * 2; // El *2 hace que el arrastre se sienta más natural y responsivo
-    carouselRef.current.scrollLeft = scrollLeftPos.current - walk;
+    isHovered.current = true; 
   };
 
   return (
@@ -166,7 +164,7 @@ export const Home = () => {
             <h1 className="text-6xl md:text-8xl lg:text-[7.5rem] font-black text-white tracking-tighter leading-[0.85] mb-10">
               WELCOME TO <br/>
               <span className="text-transparent bg-clip-text bg-gradient-to-r from-white via-neutral-300 to-neutral-500">
-                HARMONIA
+                KIROKU
               </span>
             </h1>
             
@@ -192,7 +190,7 @@ export const Home = () => {
           <div className="container mx-auto px-4 mb-10">
             <h2 className="text-3xl font-black text-white flex items-center gap-4">
               Estrenos de Temporada
-              <span className="bg-[#D6685A] text-white text-xs px-4 py-1.5 rounded-full font-bold shadow-[0_0_15px_rgba(214,104,90,0.5)]">Abril 2026</span>
+              <span className="bg-[#D6685A] text-white text-xs px-4 py-1.5 rounded-full font-bold shadow-[0_0_15px_rgba(214,104,90,0.5)]">Primavera 2026</span>
             </h2>
           </div>
 
@@ -207,7 +205,6 @@ export const Home = () => {
                 onMouseMove={handleMouseMove}
                 className={`flex gap-6 overflow-x-auto px-6 pb-8 pt-4 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden transition-all ${isDraggingUI ? 'cursor-grabbing' : 'cursor-grab'}`}
               >
-                {/* Duplicamos los animes para permitir el giro infinito visual */}
                 {[...upcoming, ...upcoming].map((anime, index) => (
                   <div 
                     key={`${anime.mal_id}-${index}`} 
@@ -222,52 +219,42 @@ export const Home = () => {
         </div>
       </section>
 
-      <section className="top-rated-section pt-32 pb-32 px-4 relative z-30 bg-[#0a0a0a] -mt-[120px]">
-        <div className="container mx-auto max-w-[900px]">
-          <h2 className="text-4xl font-black text-white mb-16 border-b border-neutral-800 pb-6">
-            Top 10 Series <span className="text-[#D6685A]">★</span>
-          </h2>
-          
-          <div className="flex flex-col gap-6">
-            {topRated.map((anime, index) => (
-              <RankingRow key={anime.mal_id} anime={anime} index={index} />
-            ))}
-          </div>
-
-          <div className="mt-16 flex justify-center">
-            <Link 
-              to="/top/rated" 
-              className="px-10 py-4 rounded-full border border-white/10 bg-white/5 text-white font-bold uppercase tracking-widest text-xs hover:bg-[#D6685A] hover:border-[#D6685A] transition-all"
-            >
-              Explorar Ranking Completo
-            </Link>
-          </div>
-        </div>
-      </section>
-
-      <section className="top-popular-section pt-32 pb-32 px-4 relative z-40 bg-[#141414] -mt-[120px]">
-        <div className="container mx-auto max-w-[900px]">
-          <h2 className="text-4xl font-black text-white mb-16 border-b border-neutral-800 pb-6">
-            Más Populares <span className="text-[#D6685A]">🔥</span>
-          </h2>
-          
-          <div className="flex flex-col gap-6">
-            {topPopular.map((anime, index) => (
-              <RankingRow key={anime.mal_id} anime={anime} index={index} />
-            ))}
-          </div>
-
-          <div className="mt-16 flex justify-center">
-            <Link 
-              to="/top/popular" 
-              className="px-10 py-4 rounded-full border border-white/10 bg-white/5 text-white font-bold uppercase tracking-widest text-xs hover:bg-[#D6685A] hover:border-[#D6685A] transition-all"
-            >
-              Explorar Ranking Completo
-            </Link>
+      <section className="rankings-section pt-32 pb-32 px-4 relative z-30 bg-[#0a0a0a] -mt-[120px]">
+        <div className="container mx-auto max-w-[1400px]">
+          <div className="grid grid-cols-1 xl:grid-cols-2 gap-12 lg:gap-20">
+            <div>
+              <h2 className="text-3xl md:text-4xl font-black text-white mb-12 border-b border-neutral-800 pb-6">
+                Top 10 Series <span className="text-[#D6685A]">★</span>
+              </h2>
+              <div className="flex flex-col gap-6">
+                {topRated.map((anime, index) => (
+                  <RankingRow key={anime.mal_id} anime={anime} index={index} />
+                ))}
+              </div>
+              <div className="mt-12 flex justify-center">
+                <Link to="/top/rated" className="px-8 py-4 rounded-full border border-white/10 bg-white/5 text-white font-bold uppercase tracking-widest text-xs hover:bg-[#D6685A] hover:border-[#D6685A] transition-all">
+                  Explorar Ranking Completo
+                </Link>
+              </div>
+            </div>
+            <div>
+              <h2 className="text-3xl md:text-4xl font-black text-white mb-12 border-b border-neutral-800 pb-6">
+                Más Populares <span className="text-[#D6685A]">🔥</span>
+              </h2>
+              <div className="flex flex-col gap-6">
+                {topPopular.map((anime, index) => (
+                  <RankingRow key={anime.mal_id} anime={anime} index={index} />
+                ))}
+              </div>
+              <div className="mt-12 flex justify-center">
+                <Link to="/top/popular" className="px-8 py-4 rounded-full border border-white/10 bg-white/5 text-white font-bold uppercase tracking-widest text-xs hover:bg-[#D6685A] hover:border-[#D6685A] transition-all">
+                  Explorar Ranking Completo
+                </Link>
+              </div>
+            </div>
           </div>
         </div>
       </section>
-      
     </div>
   );
 };
@@ -277,42 +264,24 @@ export const RankingRow = ({ anime, index }: { anime: Anime, index: number }) =>
     to={`/anime/${anime.mal_id}`}
     className="group flex bg-neutral-900/40 border border-white/5 rounded-3xl overflow-hidden hover:border-[#D6685A]/40 hover:shadow-[0_0_40px_rgba(214,104,90,0.1)] transition-all duration-500 h-auto"
   >
-    <div className="w-16 md:w-24 flex items-center justify-center bg-black/20 text-neutral-700 font-black text-2xl md:text-4xl group-hover:text-[#D6685A] transition-colors border-r border-white/5">
+    <div className="w-16 md:w-20 flex items-center justify-center bg-black/20 text-neutral-700 font-black text-xl md:text-3xl group-hover:text-[#D6685A] transition-colors border-r border-white/5 shrink-0">
       {index + 1}
     </div>
-    
-    <div className="w-32 md:w-44 h-48 md:h-60 overflow-hidden shrink-0">
-      <img 
-        src={anime.images.jpg.image_url} 
-        alt={anime.title} 
-        className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700" 
-      />
+    <div className="w-28 md:w-36 h-40 md:h-48 overflow-hidden shrink-0">
+      <img src={anime.images.jpg.image_url} alt={anime.title} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700" />
     </div>
-    
-    <div className="p-6 md:p-8 flex flex-col justify-center flex-1 min-w-0">
-      <h3 className="text-white text-xl md:text-2xl font-bold truncate mb-3 group-hover:text-[#D6685A] transition-colors">
-        {anime.title}
-      </h3>
-
-      <div className="flex flex-wrap gap-2 mb-5">
-        {anime.genres?.slice(0, 3).map(genre => (
-          <span 
-            key={genre.mal_id} 
-            className="text-[10px] font-bold uppercase tracking-widest px-2.5 py-1 bg-white/5 text-neutral-400 rounded-md border border-white/5"
-          >
-            {genre.name}
-          </span>
+    <div className="p-5 md:p-6 flex flex-col justify-center flex-1 min-w-0">
+      <h3 className="text-white text-lg md:text-xl font-bold truncate mb-2 group-hover:text-[#D6685A] transition-colors">{anime.title}</h3>
+      <div className="flex flex-wrap gap-2 mb-4">
+        {anime.genres?.slice(0, 2).map(genre => (
+          <span key={genre.mal_id} className="text-[9px] md:text-[10px] font-bold uppercase tracking-widest px-2 py-1 bg-white/5 text-neutral-400 rounded-md border border-white/5">{genre.name}</span>
         ))}
       </div>
-
-      <div className="flex items-center gap-6">
-        <span className="text-neutral-500 text-xs font-bold uppercase tracking-[0.1em]">
-          {anime.episodes ? `${anime.episodes} Episodios` : 'En Emisión'}
-        </span>
-        
-        <div className="flex items-center gap-2 bg-black/40 px-3 py-1.5 rounded-xl border border-white/5 shadow-inner">
-          <span className="text-[#D6685A] text-sm">★</span>
-          <span className="text-white font-black text-sm">{anime.score}</span>
+      <div className="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-6 mt-auto">
+        <span className="text-neutral-500 text-[10px] md:text-xs font-bold uppercase tracking-[0.1em]">{anime.episodes ? `${anime.episodes} Episodios` : 'En Emisión'}</span>
+        <div className="flex items-center gap-1.5 bg-black/40 px-2.5 py-1 rounded-xl border border-white/5 shadow-inner w-fit">
+          <span className="text-[#D6685A] text-xs">★</span>
+          <span className="text-white font-black text-xs md:text-sm">{anime.score}</span>
         </div>
       </div>
     </div>

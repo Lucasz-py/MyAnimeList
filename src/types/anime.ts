@@ -10,6 +10,7 @@ export interface Genre {
 export interface Anime {
   mal_id: number;
   title: string;
+  type?: string;
   episodes: number | null;
   score?: number | null;
   duration?: string; // <--- AGREGADO PARA CÁLCULO DE TIEMPO
@@ -57,7 +58,7 @@ export interface AnimeFull extends Anime {
   synopsis: string;
   year: number | null;
   status: string;
-  studios: { name: string }[];
+  studios: { mal_id: number; name: string }[];
   genres: Genre[]; 
   score: number | null;
   trailer?: {

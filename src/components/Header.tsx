@@ -110,7 +110,7 @@ export const Header = () => {
       <header className="fixed top-6 left-1/2 -translate-x-1/2 z-[100] w-[95%] max-w-[1200px] flex items-center justify-between px-6 py-3 bg-[#1C1C1C]/60 backdrop-blur-xl border border-white/10 rounded-full shadow-[0_10px_40px_rgba(0,0,0,0.5)] font-sans transition-all">
         
         <Link to="/" className="text-2xl font-black tracking-tight hover:opacity-80 transition-opacity" onClick={() => setInstantResults([])}>
-          Harmonia<span className='text-[#D6685A]'>.</span>
+        KIROKU<span className='text-[#D6685A]'>.</span>
         </Link>
 
         <form onSubmit={handleSearchSubmit} className="flex-1 max-w-md mx-6 relative hidden md:block" ref={dropdownRef}>

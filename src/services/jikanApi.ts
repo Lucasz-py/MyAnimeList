@@ -80,3 +80,49 @@ export const getRecommendedAnimes = async (): Promise<{ data: Anime[] }> => {
   
   return { data: shuffled.slice(0, 6) };
 };
+
+export const getAnimeByStudio = async (studioId: string) => {
+  const response = await fetch(`https://api.jikan.moe/v4/anime?producers=${studioId}&order_by=score&sort=desc&sfw=true`);
+  if (!response.ok) throw new Error('Error al cargar animes del estudio');
+  return response.json();
+};
+
+
+export interface AdvancedSearchFilters {
+  q?: string;
+  type?: string;
+  status?: string;
+  genres?: string;
+  producers?: string;
+  start_date?: string;
+  end_date?: string;
+  limit?: number;
+  page?: number;
+}
+
+export const advancedSearchAnime = async (filters: AdvancedSearchFilters) => {
+  const params = new URLSearchParams();
+  params.append('sfw', 'true');
+  
+  // --- SOLUCIÓN DEL BUG ---
+  // Solo forzamos el orden por mejor puntuación si NO estamos buscando un texto específico.
+  // Si el usuario escribe algo, dejamos que Jikan ordene por "Relevancia" (Match exacto del título).
+  if (!filters.q) {
+    params.append('order_by', 'score'); 
+    params.append('sort', 'desc');
+  }
+  
+  if (filters.q) params.append('q', filters.q);
+  if (filters.type) params.append('type', filters.type);
+  if (filters.status) params.append('status', filters.status);
+  if (filters.genres) params.append('genres', filters.genres);
+  if (filters.producers) params.append('producers', filters.producers);
+  if (filters.start_date) params.append('start_date', filters.start_date);
+  if (filters.end_date) params.append('end_date', filters.end_date);
+  if (filters.limit) params.append('limit', filters.limit.toString());
+  if (filters.page) params.append('page', filters.page.toString());
+
+  const response = await fetch(`https://api.jikan.moe/v4/anime?${params.toString()}`);
+  if (!response.ok) throw new Error('Error en búsqueda avanzada');
+  return response.json();
+};

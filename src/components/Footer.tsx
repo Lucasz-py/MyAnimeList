@@ -5,8 +5,8 @@ export const Footer = () => {
           
           {/* Lado Izquierdo: Info de la App */}
           <div className="flex flex-col items-center md:items-start">
-            <p className="text-neutral-500 text-[10px] font-bold uppercase tracking-[0.2em]">
-              Harmonia <span className="text-[#D6685A]">//</span> v2.0
+            <p className="text-neutral-500 text-[20px] font-bold uppercase tracking-[0.2em]">
+              Kiroku <span className="text-[#D6685A]">//</span>
             </p>
             <p className="text-neutral-600 text-[10px] mt-1 font-medium">
               Powered by Jikan API • © 2026

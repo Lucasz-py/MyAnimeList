@@ -36,7 +36,6 @@ export const AnimeDetails = () => {
   const [isSaving, setIsSaving] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
-  // --- NUEVA LÓGICA: Opciones dinámicas según el estado de emisión ---
   const getAvailableStatuses = () => {
     if (!anime) return [];
     if (anime.status === 'Currently Airing') {
@@ -45,7 +44,6 @@ export const AnimeDetails = () => {
     if (anime.status === 'Not yet aired') {
       return ['Pendiente'];
     }
-    // Finished Airing o cualquier otro caso
     return ['Completado', 'Mirando', 'Pendiente'];
   };
 
@@ -117,7 +115,6 @@ export const AnimeDetails = () => {
       return;
     }
 
-    // Validación de seguridad extra por si acaso
     if (!availableStatuses.includes(newStatus)) {
       alert(`No puedes marcar este anime como ${newStatus} porque su estado actual es: ${anime.status}`);
       return;
@@ -154,6 +151,7 @@ export const AnimeDetails = () => {
             is_favorite: isFavorite,
             year: anime.year || (anime.aired?.from ? parseInt(anime.aired.from.substring(0, 4)) : null),
             genres: anime.genres?.map(g => g.name) || [],
+            studios: anime.studios?.map(s => s.name) || [],
             duration: anime.duration || null 
           });
         if (error) throw error;
@@ -220,6 +218,8 @@ export const AnimeDetails = () => {
   if (!anime) return <div className="text-center mt-20 text-neutral-400 text-lg">No se encontró información.</div>;
 
   const filteredRelations = anime.relations?.filter((rel) => rel.relation.toLowerCase() !== 'adaptation') || [];
+
+  const displayYear = anime.year || (anime.aired?.from ? anime.aired.from.substring(0, 4) : 'TBA');
 
   return (
     <div className="container mx-auto p-4 md:p-8 pt-32 md:pt-36 max-w-[1350px] font-sans">
@@ -306,7 +306,6 @@ export const AnimeDetails = () => {
 
                     {isDropdownOpen && (
                       <div className="absolute top-full mt-2 right-0 w-full lg:w-48 bg-neutral-800 border border-neutral-700 rounded-xl shadow-2xl overflow-hidden z-50 animate-in fade-in slide-in-from-top-2">
-                        {/* AHORA MAPEAMOS availableStatuses EN LUGAR DE STATUS_OPTIONS */}
                         {availableStatuses.map(status => (
                           <button
                             key={status}
@@ -335,22 +334,43 @@ export const AnimeDetails = () => {
               </div>
             </div>
 
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-10 text-base">
+            {/* --- SECCIÓN DE DATOS AMPLIADA A 5 COLUMNAS --- */}
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4 mb-10 text-base">
+              
+              {/* NUEVA CAJA: FORMATO */}
+              <div className="bg-neutral-800/30 p-5 rounded-2xl">
+                <span className="text-neutral-400 text-xs uppercase tracking-wider block mb-1.5">Formato</span>
+                <span className="text-white font-medium">{anime.type || 'Desconocido'}</span>
+              </div>
+
               <div className="bg-neutral-800/30 p-5 rounded-2xl">
                 <span className="text-neutral-400 text-xs uppercase tracking-wider block mb-1.5">Estado</span>
                 <span className="text-white font-medium">{anime.status}</span>
               </div>
+              
               <div className="bg-neutral-800/30 p-5 rounded-2xl">
                 <span className="text-neutral-400 text-xs uppercase tracking-wider block mb-1.5">Episodios</span>
                 <span className="text-white font-medium">{anime.episodes || 'En emisión'}</span>
               </div>
+              
               <div className="bg-neutral-800/30 p-5 rounded-2xl">
                 <span className="text-neutral-400 text-xs uppercase tracking-wider block mb-1.5">Año</span>
-                <span className="text-white font-medium">{anime.year || 'TBA'}</span>
+                <span className="text-white font-medium">{displayYear}</span>
               </div>
+              
               <div className="bg-neutral-800/30 p-5 rounded-2xl">
                 <span className="text-neutral-400 text-xs uppercase tracking-wider block mb-1.5">Estudio</span>
-                <span className="text-white font-medium">{anime.studios[0]?.name || 'Desconocido'}</span>
+                {anime.studios && anime.studios.length > 0 ? (
+                  <Link 
+                    to={`/search?studioId=${anime.studios[0].mal_id}&studioName=${encodeURIComponent(anime.studios[0].name)}`}
+                    className="text-white font-medium hover:text-[#D6685A] transition-colors hover:underline underline-offset-4"
+                    title={`Ver todos los animes de ${anime.studios[0].name}`}
+                  >
+                    {anime.studios[0].name}
+                  </Link>
+                ) : (
+                  <span className="text-white font-medium">Desconocido</span>
+                )}
               </div>
             </div>
 

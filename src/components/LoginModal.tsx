@@ -129,7 +129,7 @@ export const LoginModal = ({ isOpen, onClose }: LoginModalProps) => {
 
         <div className="text-center mb-8 mt-2">
           <h2 className="text-3xl font-black text-white mb-2">{isLogin ? 'Bienvenido' : 'Crear Cuenta'}</h2>
-          <p className="text-neutral-400 text-sm">{isLogin ? 'Inicia sesión en tu cuenta' : 'Únete a Harmonia para gestionar tu colección'}</p>
+          <p className="text-neutral-400 text-sm">{isLogin ? 'Inicia sesión en tu cuenta' : 'Únete a Kiroku para gestionar tu colección'}</p>
         </div>
 
         {error && <div className="mb-6 p-3 bg-red-500/10 border border-red-500/50 rounded-xl text-red-400 text-sm text-center">{error}</div>}
