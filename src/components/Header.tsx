@@ -106,11 +106,18 @@ export const Header = () => {
 
   return (
     <>
-      {/* HEADER FLOTANTE (Pill Design) */}
       <header className="fixed top-6 left-1/2 -translate-x-1/2 z-[100] w-[95%] max-w-[1200px] flex items-center justify-between px-6 py-3 bg-[#1C1C1C]/60 backdrop-blur-xl border border-white/10 rounded-full shadow-[0_10px_40px_rgba(0,0,0,0.5)] font-sans transition-all">
         
-        <Link to="/" className="text-2xl font-black tracking-tight hover:opacity-80 transition-opacity" onClick={() => setInstantResults([])}>
-        KIROKU<span className='text-[#D6685A]'>.</span>
+        {/* LOGO + NOMBRE */}
+        <Link 
+          to="/" 
+          className="flex items-center gap-3 text-2xl font-black tracking-tight hover:opacity-80 transition-opacity" 
+          onClick={() => setInstantResults([])}
+        >
+          <img src="/logo.png" alt="Logo" className="w-9 h-9 object-contain" />
+          <span>
+            KIROKU<span className='text-[#D6685A]'>.</span>
+          </span>
         </Link>
 
         <form onSubmit={handleSearchSubmit} className="flex-1 max-w-md mx-6 relative hidden md:block" ref={dropdownRef}>
@@ -127,7 +134,6 @@ export const Header = () => {
             </button>
           </div>
 
-          {/* Desplegable ajustado con mt-4 para no tapar la curva del header */}
           {instantResults.length > 0 && (
             <div className="absolute top-full left-0 w-full bg-[#1C1C1C]/95 backdrop-blur-xl mt-4 border border-neutral-800 rounded-2xl shadow-2xl max-h-72 overflow-y-auto z-10 p-2 custom-scrollbar">
               {instantResults.map((anime) => (
