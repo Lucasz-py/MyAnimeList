@@ -25,6 +25,7 @@ interface SavedAnime {
   genres: string[];
   studios?: string[];
   duration: string | null;
+  progress?: number | null; 
 }
 
 interface UserStats {
@@ -37,7 +38,7 @@ interface UserStats {
   watching: number;
   favorites: number;
   topGenres: { label: string; count: number }[];
-  topYears: { label: string; count: number }[]; 
+  topStudios: { label: string; count: number }[]; 
 }
 
 interface Achievement {
@@ -85,7 +86,7 @@ const parseDurationToMinutes = (durationStr?: string | null): number => {
   return totalMin > 0 ? totalMin : 24;
 };
 
-// --- LISTA DE LOGROS (Todos con fondo cybercore medio transparente) ---
+// --- LISTA DE LOGROS ---
 const ACHIEVEMENTS: Achievement[] = [
   { 
     id: 'dios_anime', name: 'Dios del Anime', desc: 'Acumula 1,000 horas de visualización', icon: Crown, 
@@ -286,19 +287,29 @@ export const Profile = () => {
     let pending = 0;
     let watching = 0;
     const genreCounts: Record<string, number> = {};
-    const yearCounts: Record<string, number> = {}; 
+    const studioCounts: Record<string, number> = {}; 
 
     animes.forEach(anime => {
       if (anime.is_favorite) favorites++;
       if (anime.status === 'Pendiente') pending++;
-      if (anime.status === 'Mirando') watching++;
+      
+      let epsWatched = 0;
+
       if (anime.status === 'Completado') {
         completed++;
-        const eps = anime.episodes_total || 1;
-        episodes += eps;
-        minutes += (eps * parseDurationToMinutes(anime.duration));
+        epsWatched = anime.episodes_total || anime.progress || 1;
+        
         if (anime.genres) anime.genres.forEach(g => { genreCounts[g] = (genreCounts[g] || 0) + 1; });
-        if (anime.year) yearCounts[anime.year.toString()] = (yearCounts[anime.year.toString()] || 0) + 1;
+        if (anime.studios) anime.studios.forEach(s => { studioCounts[s] = (studioCounts[s] || 0) + 1; }); 
+      } 
+      else if (anime.status === 'Mirando') {
+        watching++;
+        epsWatched = anime.progress || 0;
+      }
+
+      if (epsWatched > 0) {
+        episodes += epsWatched;
+        minutes += (epsWatched * parseDurationToMinutes(anime.duration));
       }
     });
 
@@ -308,7 +319,7 @@ export const Profile = () => {
       days: (minutes / 1440).toFixed(1),
       completed, pending, watching, favorites,
       topGenres: Object.entries(genreCounts).map(([label, count]) => ({ label, count })).sort((a, b) => b.count - a.count).slice(0, 3),
-      topYears: Object.entries(yearCounts).map(([label, count]) => ({ label, count })).sort((a, b) => b.count - a.count).slice(0, 3)
+      topStudios: Object.entries(studioCounts).map(([label, count]) => ({ label, count })).sort((a, b) => b.count - a.count).slice(0, 3)
     };
   }, [animes]);
 
@@ -356,10 +367,10 @@ export const Profile = () => {
             </div>
 
             <div className="flex-1 text-center md:text-left pt-2 md:pt-6 w-full max-w-2xl">
-              <h1 className="text-4xl md:text-5xl font-sans font-black text-white mb-2 tracking-tight drop-shadow-[0_0_8px_rgba(255,255,255,0.2)]">
+              <h1 className="text-4xl md:text-5xl font-sans font-black text-white mb-1 tracking-tight drop-shadow-[0_0_8px_rgba(255,255,255,0.2)]">
                 {profile.username}
               </h1>
-              <p className="text-cyan-400/80 font-sans mb-6 text-[15px] tracking-wide">{profile.email}</p>
+              <p className="text-cyan-400/60 font-mono mb-6 text-xs tracking-widest">{profile.email}</p>
               
               <div className="bg-slate-950/80 p-5 border-l-2 border-slate-700 hover:border-cyan-500/50 transition-colors" style={cyberClipCard}>
                 {isEditingBio ? (
@@ -372,7 +383,7 @@ export const Profile = () => {
                   </div>
                 ) : (
                   <div className="group relative pr-10 cursor-pointer" onClick={() => setIsEditingBio(true)}>
-                    <p className="text-slate-300 text-base leading-relaxed font-sans">
+                    <p className="text-slate-300 text-sm md:text-base leading-relaxed font-sans">
                       {profile.bio ? profile.bio : "Sin información. Haz clic para agregar una descripción."}
                     </p>
                     <button className="absolute top-0 right-0 p-2 text-slate-600 hover:text-cyan-400 opacity-0 group-hover:opacity-100 transition-opacity"><Edit2 size={16}/></button>
@@ -395,56 +406,53 @@ export const Profile = () => {
             <div className="bg-slate-900/80 backdrop-blur-md p-6 border-t-2 border-cyan-500/50 shadow-[0_0_20px_rgba(0,0,0,0.5)] relative" style={cyberClipPanel}>
               <CyberCrosshairs />
               <h2 className="text-lg font-sans font-bold text-cyan-400 mb-5 flex items-center gap-2">
-                <Tv size={20} /> Telemetría Global
+                <Tv size={20} /> Estadísticas Personales
               </h2>
               <div className="grid grid-cols-2 gap-3">
                 <StatBox title="Completados" value={stats.completed} color="text-teal-400" />
                 <StatBox title="Pendientes" value={stats.pending} color="text-yellow-400" />
                 <StatBox title="Mirando" value={stats.watching} color="text-sky-400" />
                 <StatBox title="Favoritos" value={stats.favorites} color="text-fuchsia-400" />
-                <StatBox title="Eps Vistos" value={stats.episodes} color="text-cyan-50" />
-                <StatBox title="Total Horas" value={stats.hours} color="text-cyan-400" />
-                <StatBox title="Total Días" value={stats.days} color="text-purple-400" />
-                <StatBox title="Minutos" value={stats.minutes} color="text-blue-400" />
+                <StatBox title="Episodios Vistos" value={`${stats.episodes}`} color="text-cyan-50" />
+                <StatBox title="Total en Horas" value={`${stats.hours} hs`} color="text-cyan-400" />
+                <StatBox title="Total en Días" value={`${stats.days}`} color="text-purple-400" />
+                <StatBox title="Total en Minutos" value={`${stats.minutes} min`} color="text-blue-400" />
               </div>
             </div>
 
             <div className="grid grid-cols-1 gap-6">
-              <PodiumCard title="Géneros Frecuentes" data={stats.topGenres} />
-              <PodiumCard title="Años Frecuentes" data={stats.topYears} /> 
+              <PodiumCard title="Géneros Favoritos" data={stats.topGenres} />
+              <PodiumCard title="Estudios Favoritos" data={stats.topStudios} /> 
             </div>
 
-            {/* --- VITRINA DE LOGROS MEJORADA --- */}
+            {/* --- VITRINA DE LOGROS --- */}
             <div className="bg-slate-900/80 backdrop-blur-md p-6 border-b-2 border-cyan-500/50 shadow-[0_0_20px_rgba(0,0,0,0.5)] mb-8 relative" style={cyberClipPanel}>
               <CyberCrosshairs />
               <h2 className="text-lg font-sans font-bold text-yellow-400 mb-5 flex items-center gap-2">
-                <Trophy size={20} /> Registro de Logros
+                <Trophy size={20} /> Vitrina de Logros
               </h2>
               {unlockedAchievements.length > 0 ? (
                 <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
                   {unlockedAchievements.map(ach => (
-                    <div key={ach.id} onClick={() => setSelectedAchievement(ach)} className={`relative p-3 transition-all duration-300 flex flex-col items-center text-center group cursor-pointer ${ach.containerClass ? ach.containerClass : "bg-slate-950 border border-slate-800"}`} style={cyberClipCard}>
-                      
-                      <div className="absolute bottom-[115%] left-1/2 -translate-x-1/2 opacity-0 group-hover:opacity-100 transition-opacity duration-150 w-max max-w-[200px] bg-slate-950 border border-cyan-400 text-cyan-50 text-xs px-3 py-2 shadow-[0_0_20px_rgba(6,182,212,0.5)] z-50 pointer-events-none" style={cyberClipCard}>
-                         <span className="font-bold text-cyan-400 uppercase tracking-widest text-[9px] block mb-1">Requisito</span>
+                    <div key={ach.id} onClick={() => setSelectedAchievement(ach)} className={`relative p-2.5 transition-all duration-300 flex flex-col items-center text-center group cursor-pointer ${ach.containerClass ? ach.containerClass : "bg-slate-900/80 shadow-[inset_0_1px_0_0_rgba(255,255,255,0.05)] border border-slate-800 hover:border-cyan-400/50 hover:bg-slate-800/80"}`} style={cyberClipCard}>
+                      <div className="absolute bottom-[105%] left-1/2 -translate-x-1/2 hidden group-hover:block w-max max-w-[150px] bg-slate-950 border border-cyan-500/50 text-cyan-50 text-[10px] font-sans px-3 py-2 shadow-[0_0_20px_rgba(6,182,212,0.3)] z-20 animate-in fade-in pointer-events-none" style={cyberClipCard}>
                          {ach.desc}
                       </div>
-
-                      <div className={`transition-transform duration-300 group-hover:scale-110 mb-3 mt-1 relative ${ach.glowClass || ''}`}>
+                      <div className={`transition-transform duration-300 group-hover:scale-110 mb-2 relative ${ach.glowClass || ''}`}>
                         {ach.animatedLight ? (
-                          <div className="w-12 h-12 relative flex items-center justify-center overflow-hidden bg-slate-950" style={ach.shape ? { clipPath: ach.shape } : { borderRadius: '9999px' }}>
+                          <div className="w-10 h-10 relative flex items-center justify-center overflow-hidden bg-slate-950" style={ach.shape ? { clipPath: ach.shape } : { borderRadius: '9999px' }}>
                              <div className={`absolute w-[250%] h-[250%] top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 ${ach.animatedLight}`}></div>
                              <div className={`absolute inset-[2px] bg-gradient-to-br ${ach.color} flex items-center justify-center`} style={ach.shape ? { clipPath: ach.shape } : { borderRadius: '9999px' }}>
-                                <ach.icon size={20} className="text-white drop-shadow-md relative z-10" />
+                                <ach.icon size={16} className="text-white drop-shadow-md relative z-10" />
                              </div>
                           </div>
                         ) : (
-                          <div className={`w-12 h-12 flex items-center justify-center bg-gradient-to-br ${ach.color}`} style={ach.shape ? { clipPath: ach.shape } : { borderRadius: '9999px' }}>
-                            <ach.icon size={20} className="text-white drop-shadow-sm" />
+                          <div className={`w-10 h-10 flex items-center justify-center bg-gradient-to-br ${ach.color}`} style={ach.shape ? { clipPath: ach.shape } : { borderRadius: '9999px' }}>
+                            <ach.icon size={16} className="text-white" />
                           </div>
                         )}
                       </div>
-                      <span className="text-[11px] font-bold text-slate-300 leading-tight">{ach.name}</span>
+                      <span className="text-[9px] font-bold text-slate-300 leading-tight mt-1 line-clamp-1">{ach.name}</span>
                     </div>
                   ))}
                 </div>
@@ -495,7 +503,7 @@ export const Profile = () => {
                               </div>
                             </Link>
                             <button onClick={() => handleRemove(anime.id)} className="absolute top-2 right-2 w-8 h-8 bg-slate-950/80 backdrop-blur-md flex items-center justify-center text-slate-500 hover:text-red-400 hover:bg-slate-900 border border-slate-800 opacity-0 group-hover:opacity-100 transition-all" style={cyberClipCard}><Trash2 size={14} /></button>
-                            {anime.is_favorite && <div className="absolute top-2 left-2 w-8 h-8 bg-slate-950/80 backdrop-blur-md flex items-center justify-center border border-slate-800" style={cyberClipCard}><Heart size={14} className="fill-fuchsia-500 text-fuchsia-500 drop-shadow-[0_0_5px_rgba(217,70,239,0.5)]" /></div>}
+                            {anime.is_favorite && <div className="absolute top-2 left-2 w-8 h-8 bg-slate-950/80 backdrop-blur-md flex items-center justify-center border border-slate-800" style={cyberClipCard}><Heart size={14} className="fill-red-500 text-red-200 drop-shadow-[0_0_5px_rgba(217,70,239,0.5)]" /></div>}
                           </div>
                         )
                       })}

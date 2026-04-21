@@ -126,3 +126,6 @@ export const advancedSearchAnime = async (filters: AdvancedSearchFilters) => {
   if (!response.ok) throw new Error('Error en búsqueda avanzada');
   return response.json();
 };
+
+export const getAnimeStreaming = (id: string) => 
+  fetch(`${BASE_URL}/anime/${id}/streaming`).then(res => res.json());
